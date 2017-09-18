@@ -73,6 +73,7 @@ dkms.conf
 *.lai
 
 # Executables
+*.dat
 
 ### CodeBlocks ###
 # specific to CodeBlocks IDE

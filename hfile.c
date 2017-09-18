@@ -218,44 +218,61 @@ void getFields() {
 
     printf("Informe os campos da tabela.\n");
 
+    // solicita os campos do schema até no máximo 10 ou quando o usuario reesponder N
     while (option == 'S' && qty < MFIELD) {
         printf("Nome do campo: ");
         scanf("%s", &fname);
+        getchar();
         printf("Tipo (string='S', char='C', integer='I'): ");
         scanf("%c", &ftype);
 
+        if (fname == "\n") {
+            printf("Nome do campo deve ser preenchido!\n");
+            continue;
+        }
+
         if (ftype == 'S') {
+            // remove caractere da nova linha da string
+            strtok(fname, "\n");
+
             printf("Tamanho: ");
             scanf("%d", &flen);
         } else if (ftype == 'C') {
-
+            //ok
         } else if (ftype == 'I') {
-
+            //ok
         } else {
             printf("Tipo do campo inválido!\n");
             continue;
         }
 
+        // escreve as informacoes do campo no arquivo
         fwrite(fname,15,1,f);
         fwrite(&ftype,1,1,f);
         fwrite(&flen,sizeof(int),1,f);
         qty++;
 
+        // solicita se o usuario quer colocar mais um campo
         if (qty < MFIELD) {
-            printf("Adicionar outro campo? S/N");
+            getchar();
+            printf("Adicionar outro campo? S/N ");
             scanf("%c", &option);
         }
     }
 
+    // conforme documentacao no cabecalho do codigo deve colocar
+    // como ultimo campo um # caso haja menos de 10 campos
     if (qty < MFIELD) {
         strcpy(fname,"#");
         fwrite(fname,15+1+sizeof(int),MFIELD-qty,f);
-        fclose(f);
     }
+
+    fclose(f);
 }
 
-int main()
-{
+int main() {
+
+    getFields();
 	//buildHeader();
 	//insert();
     //selectAll();
