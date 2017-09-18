@@ -122,8 +122,8 @@ void insert()
 				          if (buf[strlen(buf)-1]!='\n')  c = getchar();
 				          else buf[strlen(buf)-1]=0;
 				          fwrite(buf,t[i].len,1,f);
-				        break; 
-				case 'C': buf[0]=fgetc(stdin); 
+				        break;
+				case 'C': buf[0]=fgetc(stdin);
 				          while((c = getchar()) != '\n' && c != EOF); /// garbage collector
 				          fwrite(buf,t[i].len,1,f);
 				        break;
@@ -132,15 +132,15 @@ void insert()
 				          fwrite (&eint.vint,t[i].len,1,f);
 				        break;
 		    }
-		    
-	   		    
+
+
 
 		    i++;
 	    }
 
 	    printf("Continuar (S/N): "); opt=getchar();
 	    while((c = getchar()) != '\n' && c != EOF); /// garbage collector
-	    
+
 	} while (opt=='S' || opt=='s');
 	fclose(f);
 }
@@ -194,7 +194,7 @@ void selectAll()
 				case 'C': printf("%c ",buf[0]);
 				        break;
 				case 'I': for (j=0;j< t[i].len;j++) eint.cint[j]=buf[j];
-				          printf("%d",eint.vint); 
+				          printf("%d",eint.vint);
 				        break;
 		    }
 		    i++;
@@ -204,11 +204,61 @@ void selectAll()
 
 }
 
+void getFields() {
+    char fname[15], ftype, option='S';
+    int flen, qty=0;
+    FILE *f;
+
+	f = fopen("agenda.dat","w+");
+
+	if (f == NULL) {
+		printf("File could not be created\n");
+		exit(0);
+    }
+
+    printf("Informe os campos da tabela.\n");
+
+    while (option == 'S' && qty < MFIELD) {
+        printf("Nome do campo: ");
+        scanf("%s", &fname);
+        printf("Tipo (string='S', char='C', integer='I'): ");
+        scanf("%c", &ftype);
+
+        if (ftype == 'S') {
+            printf("Tamanho: ");
+            scanf("%d", &flen);
+        } else if (ftype == 'C') {
+
+        } else if (ftype == 'I') {
+
+        } else {
+            printf("Tipo do campo inválido!\n");
+            continue;
+        }
+
+        fwrite(fname,15,1,f);
+        fwrite(&ftype,1,1,f);
+        fwrite(&flen,sizeof(int),1,f);
+        qty++;
+
+        if (qty < MFIELD) {
+            printf("Adicionar outro campo? S/N");
+            scanf("%c", &option);
+        }
+    }
+
+    if (qty < MFIELD) {
+        strcpy(fname,"#");
+        fwrite(fname,15+1+sizeof(int),MFIELD-qty,f);
+        fclose(f);
+    }
+}
+
 int main()
 {
-	///buildHeader();
-	//insert();	
-    selectAll();	
-	
+	//buildHeader();
+	//insert();
+    //selectAll();
+
 	return 0;
 }
