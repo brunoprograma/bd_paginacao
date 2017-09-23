@@ -257,6 +257,7 @@ void getFields() {
             getchar();
             printf("Adicionar outro campo? S/N ");
             scanf("%c", &option);
+            getchar();
         }
     }
 
@@ -274,8 +275,8 @@ int main() {
 
     getFields();
 	//buildHeader();
-	//insert();
-    //selectAll();
+	insert();
+    selectAll();
 
 	return 0;
 }
