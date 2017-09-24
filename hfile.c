@@ -15,6 +15,7 @@ definition will have character # in the name of the field.
 */
 
 #define MFIELD 10
+#define PAGE_SIZE 4096
 
 void buildHeader()
 {
@@ -145,7 +146,7 @@ void insert()
 	fclose(f);
 }
 
-void selectAll()
+void selectAllBKP()
 {
     FILE *f;
 	struct theader *t;
@@ -204,9 +205,11 @@ void selectAll()
 
 }
 
-void getFields() {
-    char fname[15], ftype, option='S';
-    int flen, qty=0;
+void create_table() {
+    char *bitmap, *fill, fname[15], ftype, option='S', nextpage='N';
+    int i, flen, qty=0, reg_len=0, qty_fill, busy_slots, fields_len=(15+1+sizeof(int))*MFIELD;
+    short slot_qty=0;
+    struct theader *th=(struct theader*) malloc(sizeof(struct theader)*MFIELD);
     FILE *f;
 
 	f = fopen("agenda.dat","w+");
@@ -223,7 +226,7 @@ void getFields() {
         printf("Nome do campo: ");
         scanf("%s", &fname);
         getchar();
-        printf("Tipo (string='S', char='C', integer='I'): ");
+        printf("Tipo (string='S', char='C', integer='I', float='F'): ");
         scanf("%c", &ftype);
 
         if (fname == "\n") {
@@ -231,25 +234,28 @@ void getFields() {
             continue;
         }
 
-        if (ftype == 'S') {
-            // remove caractere da nova linha da string
-            strtok(fname, "\n");
+        // remove caractere da nova linha da string do nome
+        strtok(fname, "\n");
 
+        if (ftype == 'S') {
             printf("Tamanho: ");
             scanf("%d", &flen);
+            reg_len += flen;
         } else if (ftype == 'C') {
-            //ok
+            reg_len += 1;
         } else if (ftype == 'I') {
-            //ok
+            reg_len += sizeof(int);
+        } else if (ftype == 'F') {
+            reg_len += sizeof(float);
         } else {
             printf("Tipo do campo inválido!\n");
             continue;
         }
 
-        // escreve as informacoes do campo no arquivo
-        fwrite(fname,15,1,f);
-        fwrite(&ftype,1,1,f);
-        fwrite(&flen,sizeof(int),1,f);
+        // adiciona os dados do campo ao vetor de structs
+        strcpy(th[qty].name,fname);
+		th[qty].type = ftype;
+		th[qty].len = flen;
         qty++;
 
         // solicita se o usuario quer colocar mais um campo
@@ -261,6 +267,34 @@ void getFields() {
         }
     }
 
+    // gravamos o header na primeira página, após ela teremos um short que indica se tem proxima pagina
+    // em seguida um short que indica o tamanho do bitmap e na sequencia o bitmap e os registros
+    qty_fill = PAGE_SIZE;
+    // quantidade de slots
+    slot_qty = (PAGE_SIZE-fields_len)/reg_len;
+    qty_fill -= fields_len;
+    // flag proxima pagina
+    fwrite(&nextpage,1,1,f);
+    qty_fill -= 1;
+    // short numero de slots (tamanho do bitmap)
+    fwrite(&slot_qty,sizeof(short),1,f);
+    qty_fill -= sizeof(short);
+    // bitmap
+    busy_slots = (fields_len + (reg_len - 1))/reg_len; // slots inutilizados ocupados pelo header, arredondado para cima
+    bitmap = malloc(slot_qty);
+    for (i=0;i<slot_qty;i++) {
+        bitmap[i] = (i<busy_slots)?'2':'0'; // valor 2 inutiliza o slot
+    }
+    fwrite(bitmap,1,slot_qty,f);
+    qty_fill -= slot_qty;
+
+    for (i=0; i<qty; i++) {
+        // escreve as informacoes do schema na pagina
+        fwrite(th[i].name,15,1,f);
+        fwrite(&th[i].type,1,1,f);
+        fwrite(&th[i].len,sizeof(int),1,f);
+    }
+
     // conforme documentacao no cabecalho do codigo deve colocar
     // como ultimo campo um # caso haja menos de 10 campos
     if (qty < MFIELD) {
@@ -268,15 +302,80 @@ void getFields() {
         fwrite(fname,15+1+sizeof(int),MFIELD-qty,f);
     }
 
+    // preencher o resto da página
+    fill = malloc(qty_fill);
+    for (i=0;i<qty_fill;i++)
+        fill[i] = '#';
+    fwrite(fill,1,qty_fill,f);
+
     fclose(f);
+}
+
+void selectAll() {
+    FILE *f;
+	struct theader *t;
+	int hlen,i,j,space,slot_len;
+	short slot_qty;
+	char buf[100];
+	union tint eint;
+	////
+	t=readHeader();
+	f=fopen("agenda.dat","r");
+	if (f==NULL)
+	{
+		printf("File not found\n");
+		exit(0);
+    }
+    ///
+//    hlen=MFIELD*(15+1+sizeof(int));
+//    fseek(f,hlen,SEEK_SET);
+    /// read record a record
+    i=0;
+    while (i<10 && t[i].name[0]!='#')
+    {
+        printf("%s ",t[i].name);
+        space=t[i].len-strlen(t[i].name);
+        for (j=1;j<=space;j++)
+          printf(" ");
+        i++;
+    }
+    printf("\n");
+    ///
+    hlen=MFIELD*(15+1+sizeof(int));
+    /// skip file's header
+    fseek(f,hlen,SEEK_SET);
+    do {
+		i=0;
+		while (i<10 && t[i].name[0]!='#')
+		{
+  			if (!fread(buf,t[i].len,1,f)) break;
+			switch (t[i].type)
+			{
+			    case 'S': for (j=0;j<t[i].len && buf[j]!=0;j++)
+			                 printf("%c",buf[j]);
+			              space=t[i].len-j;
+                          for (j=0;j<=space;j++)
+                              printf(" ");
+				        break;
+				case 'C': printf("%c ",buf[0]);
+				        break;
+				case 'I': for (j=0;j< t[i].len;j++) eint.cint[j]=buf[j];
+				          printf("%d",eint.vint);
+				        break;
+		    }
+		    i++;
+	    }
+	    printf("\n");
+    } while (!feof(f));
+
 }
 
 int main() {
 
-    getFields();
+    create_table();
 	//buildHeader();
-	insert();
-    selectAll();
+	//insert();
+    //selectAll();
 
 	return 0;
 }
