@@ -138,8 +138,6 @@ struct record_id find_rid(int page) {
         }
     }
 
-    fclose(f);
-
     // não encontramos slot vago nesta página
     if (slot == -1) {
         // temos proxima pagina?
@@ -158,6 +156,8 @@ struct record_id find_rid(int page) {
         rid.page = page;
         rid.slot = slot;
     }
+
+    fclose(f);
 
     return rid;
 };
@@ -178,8 +178,6 @@ void insert() {
 
         page = rid.page;
         slot = rid.slot;
-
-        printf("\n\nPagina %d Slot %d\n\n",page,slot);
 
         f=fopen("agenda.dat","r+b");
 
@@ -376,15 +374,11 @@ void selectAll(int page) {
                 printf(" ");
         }
         printf("\n");
-        hlen=MFIELD*(15+1+sizeof(int));
-        // skip file's header
-        fseek(f,hlen,SEEK_CUR);
     }
 
     // percorre o bitmap e imprime somente os registros com a flag '1' (ocupado)
     for (k=0; k<bitmap_len; k++) {
         if (bitmap[k] == 1) {
-            fseek(f,k*rec_len,SEEK_CUR);
             for (i=0; i<MFIELD && t[i].name[0]!='#'; i++) {
                 if (!fread(buf,t[i].len,1,f)) break;
                 switch (t[i].type) {
@@ -401,6 +395,8 @@ void selectAll(int page) {
                             break;
                 }
             }
+        } else {
+            fseek(f,rec_len,SEEK_CUR);
         }
     }
 
