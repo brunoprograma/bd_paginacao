@@ -233,6 +233,86 @@ void insert() {
     } while (opt=='S' || opt=='s');
 }
 
+void delete_record() {
+    FILE *f;
+    int i,page,slot,slot_flag,bitmap_len,rec_len,invalid;
+    char opt,c,nextpage;
+    short *bitmap,free=0;
+
+    do {
+        opt='s';
+        printf("Página: ");
+        scanf("%d", &page);
+        printf("Slot: ");
+        scanf("%d", &slot);
+        getchar();
+
+        f=fopen("agenda.dat","r+b");
+
+        if (f==NULL) {
+            printf("File not found\n");
+            exit(0);
+        }
+
+        // verifica numeros de pagina e/ou slot invalidos
+        if (page<0) {
+            printf("Número de página inválido!\n");
+            continue;
+        } else if (slot<0) {
+            printf("Número de slot inválido!\n");
+            continue;
+        }
+
+        invalid = 0;
+        // varificamos se a página solicitada existe
+        for (i=0; i<page; i++) {
+            fseek(f,i*PAGE_SIZE,SEEK_SET);
+            fread(&nextpage,1,1,f);
+
+            if (nextpage != 'Y') {
+                invalid = 1;
+                printf("A página solicitada não existe!\n");
+                break;
+            }
+        }
+
+        if (invalid == 1) continue;
+
+        fseek(f,page*PAGE_SIZE,SEEK_SET); // vamos até a página
+
+        // obtemos o tamanho do bitmap, o bitmap, uma flag se ha proxima pagina e o tamanho dos registros
+        fread(&nextpage,1,1,f);
+        fread(&bitmap_len,sizeof(int),1,f);
+
+        if (!(bitmap_len>slot)) {
+            printf("O slot solicitado não existe!\n");
+            continue;
+        }
+
+        fread(&rec_len,sizeof(int),1,f);
+        bitmap = malloc(bitmap_len*sizeof(short));
+        fread(bitmap,sizeof(short),bitmap_len,f);
+
+        slot_flag = bitmap[slot];
+
+        if (slot_flag == 1) {
+            fseek(f,page*PAGE_SIZE,SEEK_SET); // voltamos ao inicio da pagina
+            fseek(f,1+sizeof(int)+sizeof(int),SEEK_CUR); // vamos ao bitmap
+            fseek(f,slot*sizeof(short),SEEK_CUR); // vamos ao registro do slot
+            fwrite(&free,sizeof(short),1,f); // escrevemos o valor no bitmap
+            printf("Registro Página: %d Slot: %d excluído com sucesso!\n",page,slot);
+        } else {
+            printf("Registro Página: %d Slot: %d está livre. Nada foi feito.\n",page,slot);
+        }
+
+        fclose(f);
+
+        printf("Continuar (S/N): "); opt=getchar();
+        while((c = getchar()) != '\n' && c != EOF); /// garbage collector
+
+    } while (opt=='S' || opt=='s');
+}
+
 void create_table() {
     char *fill, fname[15], ftype, option='S', nextpage='N';
     int i, flen, qty=0, rec_len=0, qty_fill, busy_slots, fields_len=(15+1+sizeof(int))*MFIELD, slot_qty=0;
@@ -372,6 +452,8 @@ void selectAll(int page) {
     bitmap = malloc(bitmap_len*sizeof(short));
     fread(bitmap,sizeof(short),bitmap_len,f);
 
+    printf("Página: %d\n",page);
+
     // se for a primeira pagina imprime o cabecalho da tabela
     if (page == 0) {
         for (i=0; i<MFIELD && t[i].name[0]!='#'; i++) {
@@ -416,7 +498,7 @@ void selectAll(int page) {
                         break;
                 }
             }
-            printf("\n");
+            printf(" Slot: %d\n",k);
         } else {
             fseek(f,rec_len,SEEK_CUR);
         }
@@ -431,10 +513,36 @@ void selectAll(int page) {
 }
 
 int main() {
+	char opcao[100];
+	do{
+		printf("\n\n   SIMULADOR PAGINAS BANCO DE DADOS \n\n");
+		printf(" 1 - Estruturar paginas \n");
+		printf(" 2 - Inserir Registros\n");
+		printf(" 3 - Mostrar registros\n");
+		printf(" 4 - Excluir registro\n\n");
+		printf(" 0 - Sair\n");
+		printf("\n Escolha: ");
 
-    create_table();
-    insert();
-    selectAll(0);
 
+		fgets(opcao,100,stdin);
+		switch(opcao[0]){
+			case '0':
+				return 0;
+			case '1':
+				create_table();
+				break;
+			case '2':
+				insert();
+				break;
+			case '3':
+				selectAll(0);
+				break;
+			case '4':
+				//delete_record();
+				break;
+			default:
+				printf("\n\n   Opcao Invalida!   \n\n");
+		}
+	}while(opcao[0] != '0');
     return 0;
 }
