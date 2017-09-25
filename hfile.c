@@ -166,9 +166,9 @@ void insert() {
     FILE *f;
     struct theader *t;
     struct record_id rid;
-    int i, page, slot,bitmap_len,rec_len;
+    int i, page, slot,bitmap_len,rec_len,ivalue;
+    double dvalue;
     char opt, buf[100],c,nextpage;
-    union tint eint;
     short *bitmap,busy=1;
 
     t=readHeader();
@@ -210,9 +210,13 @@ void insert() {
                           while((c = getchar()) != '\n' && c != EOF); /// garbage collector
                           fwrite(buf,t[i].len,1,f);
                         break;
-                case 'I': scanf("%d",&eint.vint);
+                case 'I': scanf("%d",&ivalue);
                           while((c = getchar()) != '\n' && c != EOF); /// garbage collector
-                          fwrite(&eint.vint,t[i].len,1,f);
+                          fwrite(&ivalue,t[i].len,1,f);
+                        break;
+                case 'F': scanf("%lf",&dvalue);
+                          while((c = getchar()) != '\n' && c != EOF); /// garbage collector
+                          fwrite(&dvalue,t[i].len,1,f);
                         break;
             }
         }
@@ -246,10 +250,10 @@ void create_table() {
     printf("Informe os campos da tabela.\n");
 
     // solicita os campos do schema até no máximo 10 ou quando o usuario reesponder N
-    while (option == 'S' && qty < MFIELD) {
+    while ((option=='S' || option=='s') && qty < MFIELD) {
         printf("Nome do campo: ");
         fgets(fname,15,stdin);
-        printf("Tipo (string='S', char='C', integer='I'): ");
+        printf("Tipo (string='S', char='C', integer='I', float='F'): ");
         scanf("%c", &ftype);
 
         if (fname[0] == '\n') {
@@ -263,15 +267,18 @@ void create_table() {
         if (ftype == 'S') {
             printf("Tamanho: ");
             scanf("%d", &flen);
-            rec_len += flen;
         } else if (ftype == 'C') {
-            rec_len += 1;
+            flen = 1;
         } else if (ftype == 'I') {
-            rec_len += sizeof(int);
+            flen = sizeof(int);
+        } else if (ftype == 'F') {
+            flen = sizeof(double);
         } else {
             printf("Tipo do campo inválido!\n");
             continue;
         }
+
+        rec_len += flen;
 
         // adiciona os dados do campo ao vetor de structs
         strcpy(th[qty].name,fname);
@@ -342,9 +349,9 @@ void create_table() {
 void selectAll(int page) {
     FILE *f;
     struct theader *t;
-    int hlen,i,j,k,space,bitmap_len,rec_len;
+    int i,j,k,space,bitmap_len,rec_len,ibuf;
+    double dbuf;
     char buf[100], nextpage;
-    union tint eint;
     short *bitmap;
 
     t=readHeader();
@@ -380,21 +387,36 @@ void selectAll(int page) {
     for (k=0; k<bitmap_len; k++) {
         if (bitmap[k] == 1) {
             for (i=0; i<MFIELD && t[i].name[0]!='#'; i++) {
-                if (!fread(buf,t[i].len,1,f)) break;
                 switch (t[i].type) {
-                    case 'S': for (j=0;j<t[i].len && buf[j]!=0;j++)
-                                 printf("%c",buf[j]);
-                              space=t[i].len-j;
-                              for (j=0;j<=space;j++)
-                                  printf(" ");
-                            break;
-                    case 'C': printf("%c ",buf[0]);
-                            break;
-                    case 'I': for (j=0;j< t[i].len;j++) eint.cint[j]=buf[j];
-                              printf("%d",eint.vint);
-                            break;
+                    case 'S':
+                        if (!fread(buf,t[i].len,1,f)) break;
+
+                        for (j=0;j<t[i].len && buf[j]!=0;j++)
+                            printf("%c",buf[j]);
+                        space=t[i].len-j;
+                        for (j=0;j<=space;j++)
+                            printf(" ");
+                        break;
+
+                    case 'C':
+                        if (!fread(buf,t[i].len,1,f)) break;
+
+                        printf("%c ",buf[0]);
+                        break;
+
+                    case 'I':
+                        if (!fread(&ibuf,t[i].len,1,f)) break;
+
+                        printf("%d",ibuf);
+                        break;
+                    case 'F':
+                        if (!fread(&dbuf,t[i].len,1,f)) break;
+
+                        printf("%lf",dbuf);
+                        break;
                 }
             }
+            printf("\n");
         } else {
             fseek(f,rec_len,SEEK_CUR);
         }
