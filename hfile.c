@@ -10,6 +10,7 @@ Simulador de tabela de BD distribuída em páginas (blocos)
 
 #define MFIELD 10
 #define PAGE_SIZE 4096
+#define STRING_MAX 256
 
 struct theader {
     char name[15];
@@ -168,7 +169,7 @@ void insert() {
     struct record_id rid;
     int i, page, slot,bitmap_len,rec_len,ivalue;
     double dvalue;
-    char opt, buf[100],c,nextpage;
+    char opt, buf[STRING_MAX],c,nextpage;
     short *bitmap,busy=1;
 
     t=readHeader();
@@ -345,8 +346,10 @@ void create_table() {
         strtok(fname, "\n");
 
         if (ftype == 'S') {
-            printf("Tamanho: ");
+            printf("Tamanho (máx. 256 bytes): ");
             scanf("%d", &flen);
+            if (flen > STRING_MAX)
+                flen = STRING_MAX;
         } else if (ftype == 'C') {
             flen = 1;
         } else if (ftype == 'I') {
@@ -431,7 +434,7 @@ void selectAll(int page) {
     struct theader *t;
     int i,j,k,space,bitmap_len,rec_len,ibuf;
     double dbuf;
-    char buf[100], nextpage;
+    char buf[STRING_MAX], nextpage;
     short *bitmap;
 
     t=readHeader();
@@ -508,13 +511,13 @@ void selectAll(int page) {
 
     // se tiver proxima pagina, chama a funcao novamente
     if (nextpage == 'Y') {
-        selectAll(++page);
+        selectAll(page+1);
     }
 }
 
 int main() {
-	char opcao[100];
-	do{
+	int opcao;
+	do {
 		printf("\n\n   SIMULADOR PAGINAS BANCO DE DADOS \n\n");
 		printf(" 1 - Estruturar paginas \n");
 		printf(" 2 - Inserir Registros\n");
@@ -523,26 +526,27 @@ int main() {
 		printf(" 0 - Sair\n");
 		printf("\n Escolha: ");
 
+        scanf("%d",&opcao);
+        getchar();
 
-		fgets(opcao,100,stdin);
-		switch(opcao[0]){
-			case '0':
+		switch(opcao){
+			case 0:
 				return 0;
-			case '1':
+			case 1:
 				create_table();
 				break;
-			case '2':
+			case 2:
 				insert();
 				break;
-			case '3':
+			case 3:
 				selectAll(0);
 				break;
-			case '4':
-				//delete_record();
+			case 4:
+				delete_record();
 				break;
 			default:
 				printf("\n\n   Opcao Invalida!   \n\n");
 		}
-	}while(opcao[0] != '0');
+	}while(opcao != 0);
     return 0;
 }
